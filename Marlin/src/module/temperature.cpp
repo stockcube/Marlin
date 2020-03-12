@@ -101,11 +101,13 @@
 
 #if HOTEND_USES_THERMISTOR
   #if ENABLED(TEMP_SENSOR_1_AS_REDUNDANT)
-    static void* heater_ttbl_map[2] = { (void*)HEATER_0_TEMPTABLE, (void*)HEATER_1_TEMPTABLE };
+    static const void* heater_ttbl_map[2] = { (void*)HEATER_0_TEMPTABLE, (void*)HEATER_1_TEMPTABLE };
     static constexpr uint8_t heater_ttbllen_map[2] = { HEATER_0_TEMPTABLE_LEN, HEATER_1_TEMPTABLE_LEN };
   #else
-    static void* heater_ttbl_map[HOTENDS] = ARRAY_BY_HOTENDS((void*)HEATER_0_TEMPTABLE, (void*)HEATER_1_TEMPTABLE, (void*)HEATER_2_TEMPTABLE, (void*)HEATER_3_TEMPTABLE, (void*)HEATER_4_TEMPTABLE, (void*)HEATER_5_TEMPTABLE);
-    static constexpr uint8_t heater_ttbllen_map[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_TEMPTABLE_LEN, HEATER_1_TEMPTABLE_LEN, HEATER_2_TEMPTABLE_LEN, HEATER_3_TEMPTABLE_LEN, HEATER_4_TEMPTABLE_LEN, HEATER_5_TEMPTABLE_LEN);
+    #define NEXT_TEMPTABLE(N) ,HEATER_##N##_TEMPTABLE
+    #define NEXT_TEMPTABLE_LEN(N) ,HEATER_##N##_TEMPTABLE_LEN
+    static const void* heater_ttbl_map[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_TEMPTABLE REPEAT_S(1, HOTENDS, NEXT_TEMPTABLE));
+    static constexpr uint8_t heater_ttbllen_map[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_TEMPTABLE_LEN REPEAT_S(1, HOTENDS, NEXT_TEMPTABLE_LEN));
   #endif
 #endif
 
@@ -1028,10 +1030,6 @@ void Temperature::manage_heater() {
     if (!inited) return watchdog_refresh();
   #endif
 
-  #if BOTH(PROBING_HEATERS_OFF, BED_LIMIT_SWITCHING)
-    static bool last_pause_state;
-  #endif
-
   #if ENABLED(EMERGENCY_PARSER)
     if (emergency_parser.killed_by_M112) kill(M112_KILL_STR, nullptr, true);
   #endif
@@ -1123,16 +1121,21 @@ void Temperature::manage_heater() {
       }
     #endif // WATCH_BED
 
+    #define PAUSE_CHANGE_REQD BOTH(PROBING_HEATERS_OFF, BED_LIMIT_SWITCHING)
+    #if PAUSE_CHANGE_REQD
+      static bool last_pause_state;
+    #endif
+
     do {
 
       #if DISABLED(PIDTEMPBED)
         if (PENDING(ms, next_bed_check_ms)
-          #if BOTH(PROBING_HEATERS_OFF, BED_LIMIT_SWITCHING)
+          #if PAUSE_CHANGE_REQD
             && paused == last_pause_state
           #endif
         ) break;
         next_bed_check_ms = ms + BED_CHECK_INTERVAL;
-        #if BOTH(PROBING_HEATERS_OFF, BED_LIMIT_SWITCHING)
+        #if PAUSE_CHANGE_REQD
           last_pause_state = paused;
         #endif
       #endif
@@ -3357,6 +3360,15 @@ void Temperature::tick() {
       if (wait_for_heatup) ui.reset_status();
 
       return wait_for_heatup;
+    }
+
+    void Temperature::wait_for_bed_heating() {
+      if (isHeatingBed()) {
+        SERIAL_ECHOLNPGM("Wait for bed heating...");
+        LCD_MESSAGEPGM(MSG_BED_HEATING);
+        wait_for_bed();
+        ui.reset_status();
+      }
     }
 
   #endif // HAS_HEATED_BED
