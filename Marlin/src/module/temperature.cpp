@@ -142,6 +142,7 @@ const char str_t_thermal_runaway[] PROGMEM = STR_T_THERMAL_RUNAWAY,
 
 #if HAS_HOTEND
   hotend_info_t Temperature::temp_hotend[HOTEND_TEMPS]; // = { 0 }
+  const int16_t Temperature::heater_maxtemp[HOTENDS] = ARRAY_BY_HOTENDS(HEATER_0_MAXTEMP, HEATER_1_MAXTEMP, HEATER_2_MAXTEMP, HEATER_3_MAXTEMP, HEATER_4_MAXTEMP, HEATER_5_MAXTEMP, HEATER_6_MAXTEMP, HEATER_7_MAXTEMP);
 #endif
 
 #if ENABLED(AUTO_POWER_E_FANS)
@@ -192,7 +193,7 @@ const char str_t_thermal_runaway[] PROGMEM = STR_T_THERMAL_RUNAWAY,
 
     NOMORE(speed, 255U);
 
-    #if ENABLED(SINGLENOZZLE)
+    #if ENABLED(SINGLENOZZLE_STANDBY_FAN)
       if (target != active_extruder) {
         if (target < EXTRUDERS) singlenozzle_fan_speed[target] = speed;
         return;
@@ -2385,7 +2386,7 @@ void Temperature::tick() {
 
   #if DISABLED(SLOW_PWM_HEATERS)
 
-    #if HOTENDS || HAS_HEATED_BED || HAS_HEATED_CHAMBER
+    #if HAS_HOTEND || HAS_HEATED_BED || HAS_HEATED_CHAMBER
       constexpr uint8_t pwm_mask =
         #if ENABLED(SOFT_PWM_DITHER)
           _BV(SOFT_PWM_SCALE) - 1
@@ -2930,7 +2931,7 @@ void Temperature::tick() {
 
   #endif // AUTO_REPORT_TEMPERATURES
 
-  #if HOTENDS && HAS_DISPLAY
+  #if HAS_HOTEND && HAS_DISPLAY
     void Temperature::set_heating_message(const uint8_t e) {
       const bool heating = isHeatingHotend(e);
       ui.status_printf_P(0,
