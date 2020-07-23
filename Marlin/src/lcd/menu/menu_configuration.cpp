@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -307,6 +307,7 @@ void menu_advanced_settings();
     #define MAXTEMP_ALL _MAX(REPEAT(HOTENDS, _MAXTEMP_ITEM) 0)
     const uint8_t m = MenuItemBase::itemIndex;
     START_MENU();
+    STATIC_ITEM_P(ui.get_preheat_label(m), SS_CENTER|SS_INVERT);
     BACK_ITEM(MSG_CONFIGURATION);
     #if HAS_FAN
       editable.uint8 = uint8_t(ui.material_preset[m].fan_speed);
